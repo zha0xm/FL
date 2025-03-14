@@ -2,7 +2,7 @@
 
 
 from dataclasses import dataclass
-from typing import Any, Union
+from typing import Any, Union, Callable, Optional
 from enum import Enum
 
 import numpy.typing as npt
@@ -25,6 +25,9 @@ MetricsRecordValues = Union[MetricsScalar, MetricsScalarList]
 ConfigsScalar = Union[MetricsScalar, str, bytes, bool]
 ConfigsScalarList = Union[MetricsScalarList, list[str], list[bytes], list[bool]]
 ConfigsRecordValues = Union[ConfigsScalar, ConfigsScalarList]
+
+Metrics = dict[str, Scalar]
+MetricsAggregationFn = Callable[[list[tuple[int, Metrics]]], Metrics]
 
 Config = dict[str, Scalar]
 Properties = dict[str, Scalar]
@@ -124,3 +127,62 @@ class GetPropertiesRes:
 
     status: Status
     properties: Properties
+
+
+@dataclass
+class ReconnectIns:
+    """ReconnectIns message from server to client."""
+
+    seconds: Optional[int]
+
+
+@dataclass
+class DisconnectRes:
+    """DisconnectRes message from client to server."""
+
+    reason: str
+
+
+@dataclass
+class RunStatus:
+    """Run status information."""
+
+    status: str
+    sub_status: str
+    details: str
+
+
+@dataclass
+class Run:
+    """Run details."""
+
+    run_id: int
+    fab_id: str
+    fab_version: str
+    fab_hash: str
+    override_config: UserConfig
+    pending_at: str
+    starting_at: str
+    running_at: str
+    finished_at: str
+    status: RunStatus
+
+    @classmethod
+    def create_empty(cls, run_id: int) -> "Run":
+        """Return an empty Run instance."""
+        return cls(
+            run_id=run_id,
+            fab_id="",
+            fab_version="",
+            fab_hash="",
+            override_config={},
+            pending_at="",
+            starting_at="",
+            running_at="",
+            finished_at="",
+            status=RunStatus(status="", sub_status="", details=""),
+        )
+    
+
+class RunNotRunningException(BaseException):
+    """Raised when a run is not running."""

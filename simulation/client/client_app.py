@@ -8,6 +8,7 @@ from contextlib import contextmanager
 
 from common import Message, Context, MessageType
 from common.logger import warn_deprecated_feature, warn_preview_feature
+from client.message_handler.message_handler import handle_legacy_message_from_msgtype
 from client.mod.utils import make_ffn
 
 from .typing import ClientFnExt, Mod, ClientAppCallable
@@ -39,6 +40,20 @@ def _inspect_maybe_adapt_client_fn_signature(client_fn: ClientFnExt) -> ClientFn
             f"{dict(client_fn_args.items())}. You can import the `Context` like this:"
             " `from flwr.common import Context`"
         )
+
+
+@contextmanager
+def _empty_lifespan(_: Context) -> Iterator[None]:
+    yield
+
+
+class ClientAppException(Exception):
+    """Exception raised when an exception is raised while executing a ClientApp."""
+
+    def __init__(self, message: str):
+        ex_name = self.__class__.__name__
+        self.message = f"\nException {ex_name} occurred. Message: " + message
+        super().__init__(self.message)
 
 
 class ClientApp:
@@ -313,3 +328,34 @@ class ClientApp:
             return lifespan_fn
 
         return lifespan_decorator
+    
+
+def _registration_error(fn_name: str) -> ValueError:
+    return ValueError(
+        f"""Use either `@app.{fn_name}()` or `client_fn`, but not both.
+
+        Use the `ClientApp` with an existing `client_fn`:
+
+        >>> class FlowerClient(NumPyClient):
+        >>>     # ...
+        >>>
+        >>> def client_fn(context: Context):
+        >>>     return FlowerClient().to_client()
+        >>>
+        >>> app = ClientApp(
+        >>>     client_fn=client_fn,
+        >>> )
+
+        Use the `ClientApp` with a custom {fn_name} function:
+
+        >>> app = ClientApp()
+        >>>
+        >>> @app.{fn_name}()
+        >>> def {fn_name}(message: Message, context: Context) -> Message:
+        >>>    print("ClientApp {fn_name} running")
+        >>>    # Create and return an echo reply message
+        >>>    return message.create_reply(
+        >>>        content=message.content()
+        >>>    )
+        """,
+    )

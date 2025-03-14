@@ -2,7 +2,7 @@
 
 import torch
 from random import random
-from client import NumPyClient, 
+from client import NumPyClient, ClientApp
 from common import Context, ConfigsRecord
 from task import Net, load_data, get_weights, set_weights, train, test
 
